@@ -1,0 +1,30 @@
+{
+  "name": "aero-tube-widget",
+  "version": "1.0.0",
+  "description": "Widget de controle para YouTube Music e YouTube",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win dir",
+    "pack": "npm run build && powershell -Command \"Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/AeroTube-win.zip -Force\""
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "dev.aerotube.widget",
+    "productName": "AeroTube",
+    "win": {
+      "target": "dir",
+      "icon": "build/icon.ico"
+    },
+    "files": [
+      "*.js",
+      "*.html",
+      "*.ps1"
+    ]
+  },
+  "author": "Nicolas",
+  "license": "MIT"
+}

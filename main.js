@@ -36,13 +36,14 @@ app.whenReady().then(() => {
   win.on('moved', () => { const [x, y] = win.getPosition(); try { fs.writeFileSync(PF, JSON.stringify({ x, y })); } catch {} });
   const reg = (k, n) => globalShortcut.register(k, () => win.webContents.send('key', n));
   reg('Control+Alt+Space', 'pp'); reg('Control+Alt+Right', 'next'); reg('Control+Alt+Left', 'prev');
-  reg('Control+Alt+Up', 'fwd'); reg('Control+Alt+Down', 'back');
+  reg('Control+Alt+Up', 'fwd'); reg('Control+Alt+Down', 'back'); reg('Control+Alt+M', 'mini');
+  globalShortcut.register('Control+Alt+G', () => setGame(!game));
 });
-ipcMain.on('size', (_, w, h) => { if (win) win.setSize(w, h, true); });
+ipcMain.on('size', (_, w, h) => { if (win) { win.setMinimumSize(Math.min(380, w), Math.min(180, h)); win.setSize(w, h, true); } });
 ipcMain.on('ext', (_, u) => shell.openExternal(u));
 ipcMain.on('win', (_, a) => { if (a === 'close') app.quit(); if (a === 'min') win.minimize(); });
 ipcMain.handle('pin', () => { const v = !win.isAlwaysOnTop(); win.setAlwaysOnTop(v); return v; });
-let spS = null, spImg = '', spTi = '', ps;
+let spS = null, spImg = '', spTi = '', ps, sysVol = null;
 function startMedia() {
   const dir = app.getPath('userData'), dst = path.join(dir, 'media.ps1'), cmd = path.join(dir, 'cmd.txt');
   fs.writeFileSync(dst, fs.readFileSync(path.join(__dirname, 'media.ps1'), 'utf8'));
@@ -55,6 +56,7 @@ function startMedia() {
       const l = buf.slice(0, i).replace(/^\uFEFF/, '').trim(); buf = buf.slice(i + 1);
       try {
         const o = JSON.parse(l);
+        if (o.vol !== undefined) { sysVol = { v: o.vol, m: o.mute }; continue; }
         if (o.none) { spS = null; continue; }
         if (o.img) spImg = o.img;
         if (o.ti !== spTi) { spTi = o.ti; if (!o.img) spImg = ''; }
@@ -64,6 +66,7 @@ function startMedia() {
   });
 }
 ipcMain.handle('sp:get', () => spS);
+ipcMain.handle('vol:get', () => sysVol);
 app.on('will-quit', () => { if (ps) ps.kill(); });
 const RB = ['de1', 'de2', 'nl1', 'fi1', 'at1'];
 ipcMain.handle('radio:search', async (_, qs) => {
@@ -103,10 +106,10 @@ async function checkUpdate() {
     const r = await fetch('https://api.github.com/repos/nicolassilv04/aero-tube/releases/latest', { headers: { 'User-Agent': 'AeroTube' } });
     if (!r.ok) return;
     const j = await r.json(), n = s => s.replace(/^v/, '').split('.').map(Number), a = n(j.tag_name), b = n(app.getVersion());
-    if ((a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) > 0) win.webContents.send('update', { tag: j.tag_name, url: j.html_url });
+    if ((a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) > 0) win.webContents.send('update', { tag: j.tag_name, url: j.html_url, packaged: app.isPackaged, asset: ((j.assets || []).find(x => x.name === 'AeroTube-win.zip') || {}).browser_download_url });
   } catch {}
 }
-const DISCORD_ID = '1575268156908503040'; // Application ID criado em discord.com/developers (veja DOCUMENTACAO.md)
+const DISCORD_ID = ''; // Application ID criado em discord.com/developers (veja DOCUMENTACAO.md)
 let rpc = null, rpcReady = false, rpcLast = null;
 function rpcSend() {
   if (!rpcReady || !rpc) return;
@@ -129,6 +132,37 @@ ipcMain.on('rpc', (_, a) => {
   } catch { rpc = null; }
 });
 app.on('will-quit', () => { try { if (rpc) rpc.destroy(); } catch {} });
+const UPD = `param($p,$zip,$dir,$exe)
+Wait-Process -Id $p -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+$t = Join-Path $env:TEMP 'aerotube-upd'
+Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue
+Expand-Archive -Path $zip -DestinationPath $t -Force
+robocopy $t $dir /E /R:5 /W:1 /NFL /NDL /NJH /NJS | Out-Null
+Start-Process $exe`;
+ipcMain.handle('update:apply', async (_, url) => {
+  if (!app.isPackaged) return false;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'AeroTube' } });
+    if (!r.ok) return false;
+    const tmp = app.getPath('temp'), zip = path.join(tmp, 'AeroTube-update.zip'), ps1 = path.join(tmp, 'aerotube-update.ps1');
+    fs.writeFileSync(zip, Buffer.from(await r.arrayBuffer()));
+    fs.writeFileSync(ps1, UPD);
+    spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, String(process.pid), zip, path.dirname(process.execPath), process.execPath], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    setTimeout(() => app.quit(), 300);
+    return true;
+  } catch { return false; }
+});
+let game = false, flashT;
+function setGame(v) {
+  game = v; ghost = v;
+  win.setAlwaysOnTop(true, v ? 'screen-saver' : 'floating', 1);
+  win.setFocusable(!v); win.setIgnoreMouseEvents(v);
+  win.setOpacity(v ? Math.min(base, 0.45) : base);
+  win.webContents.send('game', v);
+}
+ipcMain.on('game', (_, v) => setGame(!!v));
+ipcMain.on('flash', () => { if (!game) return; win.setOpacity(1); clearTimeout(flashT); flashT = setTimeout(() => win.setOpacity(Math.min(base, 0.45)), 5000); });
 let base = 1, fade = false, ghost = false;
 ipcMain.on('op', (_, v) => { base = v; win.setOpacity(v); });
 ipcMain.on('fade', (_, f) => { fade = f; if (!f) win.setOpacity(base); });
@@ -140,17 +174,28 @@ setInterval(() => {
   win.setOpacity(inside ? base : base * 0.45);
 }, 250);
 app.on('will-quit', () => globalShortcut.unregisterAll());
-ipcMain.handle('lyrics', async (_, ar, ti, d) => {
-  const H = { headers: { 'User-Agent': 'AeroTubeWidget/1.0' } }, q = encodeURIComponent, tol = d ? 8 : 1e9;
-  const J = async u => { try { const r = await fetch(u, H); return r.ok ? await r.json() : null; } catch { return null; } };
+ipcMain.handle('lyrics', async (_, ar, ti, d, extra) => {
+  const H = { 'User-Agent': 'AeroTubeWidget/1.0' }, q = encodeURIComponent, tol = d ? 8 : 1e9;
+  const J = async (u, h = H) => { try { const r = await fetch(u, { headers: h, signal: AbortSignal.timeout(7000) }); return r.ok ? await r.json() : null; } catch { return null; } };
   const near = a => {
     a = (Array.isArray(a) ? a : []).filter(x => Math.abs(x.duration - d) <= tol).sort((x, y) => Math.abs(x.duration - d) - Math.abs(y.duration - d));
     return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
   };
-  const g = await J(`https://lrclib.net/api/get?artist_name=${q(ar)}&track_name=${q(ti)}&duration=${Math.round(d)}`);
-  if (g && (g.syncedLyrics || g.plainLyrics)) return g;
+  let r = await J(`https://lrclib.net/api/get?artist_name=${q(ar)}&track_name=${q(ti)}&duration=${Math.round(d)}`);
+  if (r && (r.syncedLyrics || r.plainLyrics)) return { ...r, src: 'lrclib' };
   for (const u of [`track_name=${q(ti)}&artist_name=${q(ar)}`, `q=${q(ar + ' ' + ti)}`, `q=${q(ti)}`]) {
-    const r = near(await J(`https://lrclib.net/api/search?${u}`)); if (r) return r;
+    r = near(await J(`https://lrclib.net/api/search?${u}`)); if (r) return { ...r, src: 'lrclib' };
   }
+  if (extra) {
+    const NH = { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com' };
+    const s = await J(`https://music.163.com/api/search/get/web?csrf_token=&s=${q(ar + ' ' + ti)}&type=1&offset=0&limit=5`, NH);
+    const songs = ((s && s.result && s.result.songs) || []).filter(x => !d || Math.abs(x.duration / 1000 - d) <= 8);
+    if (songs[0]) {
+      const l = await J(`https://music.163.com/api/song/lyric?id=${songs[0].id}&lv=1`, NH), t = l && l.lrc && l.lrc.lyric;
+      if (t && /\[\d+:\d+/.test(t)) return { syncedLyrics: t, src: 'NetEase' };
+    }
+  }
+  const o = await J(`https://api.lyrics.ovh/v1/${q(ar)}/${q(ti)}`);
+  if (o && o.lyrics) return { plainLyrics: o.lyrics, src: 'lyrics.ovh' };
   return null;
 });

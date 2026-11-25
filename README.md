@@ -34,7 +34,9 @@ Visual Frutiger Aero, cyberpunk e mais 10 temas.
 - **Rádios online** com busca, favoritos e a música atual quando a rádio informa.
 - **Visualizador de áudio** real, que reage ao som do computador, e **Discord** mostrando o que você está ouvindo.
 - **Atalhos globais**, incluindo esconder o widget e deixar o clique atravessar a janela (bom para jogos).
-- **Aviso de atualização** quando sai uma versão nova no GitHub.
+- **Atualização automática:** o app avisa quando sai versão nova e se atualiza com um clique (versão em zip).
+- **Modo mini** (só capa, título e controles) e **modo jogo** (por cima do jogo, clique atravessa).
+- **Volume do Windows** pelo widget e **fontes extras de letra** quando o lrclib não acha.
 - **Abrir no navegador** no ponto exato em que você está.
 - **Salva tudo:** tema, posição, opacidade e preferências.
 
@@ -101,6 +103,17 @@ A aba **RÁDIO** usa o [Radio Browser](https://www.radio-browser.info), um catá
 
 <br clear="right">
 
+## Modo jogo
+
+<img src="docs/img/mini.png" alt="Modo mini" width="360" align="right">
+
+Ligue com `Ctrl+Alt+G` (ou no ⚙). O widget vira a versão mini, fica **por cima do jogo**, esmaece, não rouba o foco e o clique atravessa. Quando a música troca, ele acende por 5 segundos. Aperte `Ctrl+Alt+G` de novo para sair.
+
+<br clear="right">
+
+- Use o jogo em **janela sem borda** (borderless). Em tela cheia exclusiva o Windows pode esconder o widget.
+- O AeroTube é só uma janela comum por cima: **não mexe no jogo** nem injeta nada, então não interfere em sistemas antitrapaça.
+
 ## Atalhos globais
 
 | Atalho | Ação |
@@ -110,6 +123,8 @@ A aba **RÁDIO** usa o [Radio Browser](https://www.radio-browser.info), um catá
 | `Ctrl` + `Alt` + `↑` / `↓` | Pular para frente / para trás |
 | `Ctrl` + `Alt` + `H` | Esconder / mostrar o widget |
 | `Ctrl` + `Alt` + `L` | Clique atravessa a janela (aperte de novo para voltar) |
+| `Ctrl` + `Alt` + `M` | Modo mini |
+| `Ctrl` + `Alt` + `G` | Modo jogo |
 
 ## Rodar pelo código
 

@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session, globalShortcut, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const http = require('http'), https = require('https');
 // UA de Firefox: o Google costuma aceitar login assim em apps Electron
 const FF = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0';
 app.userAgentFallback = FF;
@@ -18,13 +19,20 @@ app.whenReady().then(() => {
     cb({ requestHeaders: h });
   });
   win = new BrowserWindow({
-    ...pos, width: 380, height: 180, minWidth: 340, minHeight: 180,
+    ...pos, width: 380, height: 180, minWidth: 380, minHeight: 180,
     frame: false, backgroundMaterial: 'acrylic', backgroundColor: '#00000000',
     alwaysOnTop: true, title: 'AeroTube',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), webviewTag: true, backgroundThrottling: false }
   });
   win.loadFile('index.html');
+  // Captura do audio do sistema (visualizador)
+  win.webContents.session.setDisplayMediaRequestHandler((req, cb) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then(s => cb({ video: s[0], audio: 'loopback' })).catch(() => cb({}));
+  }, { useSystemPicker: false });
   if (process.platform === 'win32') startMedia();
+  win.webContents.once('did-finish-load', () => setTimeout(checkUpdate, 3000));
+  globalShortcut.register('Control+Alt+H', () => win.isVisible() ? win.hide() : win.show());
+  globalShortcut.register('Control+Alt+L', () => { ghost = !ghost; win.setIgnoreMouseEvents(ghost); win.setOpacity(ghost ? base * 0.6 : base); });
   win.on('moved', () => { const [x, y] = win.getPosition(); try { fs.writeFileSync(PF, JSON.stringify({ x, y })); } catch {} });
   const reg = (k, n) => globalShortcut.register(k, () => win.webContents.send('key', n));
   reg('Control+Alt+Space', 'pp'); reg('Control+Alt+Right', 'next'); reg('Control+Alt+Left', 'prev');
@@ -57,7 +65,71 @@ function startMedia() {
 }
 ipcMain.handle('sp:get', () => spS);
 app.on('will-quit', () => { if (ps) ps.kill(); });
-let base = 1, fade = false;
+const RB = ['de1', 'de2', 'nl1', 'fi1', 'at1'];
+ipcMain.handle('radio:search', async (_, qs) => {
+  const get = async q => {
+    for (const s of RB) {
+      try {
+        const r = await fetch(`https://${s}.api.radio-browser.info/json/stations/search?${q}&hidebroken=true&order=votes&reverse=true&limit=40`, { headers: { 'User-Agent': 'AeroTube/1.0' }, signal: AbortSignal.timeout(6000) });
+        if (r.ok) return await r.json();
+      } catch {}
+    }
+    return [];
+  };
+  const seen = new Set(), out = [];
+  for (const arr of await Promise.all(qs.map(get)))
+    for (const x of arr) if (!seen.has(x.stationuuid) && !x.hls && x.url_resolved) {
+      seen.add(x.stationuuid);
+      out.push({ id: x.stationuuid, name: (x.name || '').trim(), url: x.url_resolved, tags: (x.tags || '').split(',').slice(0, 2).join(', '), country: x.countrycode, favicon: x.favicon, votes: x.votes });
+    }
+  return out.sort((a, b) => b.votes - a.votes).slice(0, 40);
+});
+ipcMain.handle('radio:meta', (_, url) => new Promise(res => {
+  let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+  try {
+    const req = (url.startsWith('https') ? https : http).get(url, { headers: { 'Icy-MetaData': '1', 'User-Agent': 'AeroTube/1.0' } }, r => {
+      const mi = +r.headers['icy-metaint']; if (!mi) { req.destroy(); return fin(null); }
+      let buf = Buffer.alloc(0);
+      r.on('data', d => {
+        buf = Buffer.concat([buf, d]);
+        if (buf.length > mi) { const n = buf[mi] * 16; if (buf.length >= mi + 1 + n) { const t = /StreamTitle='(.*?)';/.exec(buf.slice(mi + 1, mi + 1 + n).toString('utf8')); req.destroy(); fin(t && t[1] || null); } }
+      });
+    });
+    req.on('error', () => fin(null)); setTimeout(() => { try { req.destroy(); } catch {} fin(null); }, 9000);
+  } catch { fin(null); }
+}));
+async function checkUpdate() {
+  try {
+    const r = await fetch('https://api.github.com/repos/nicolassilv04/aero-tube/releases/latest', { headers: { 'User-Agent': 'AeroTube' } });
+    if (!r.ok) return;
+    const j = await r.json(), n = s => s.replace(/^v/, '').split('.').map(Number), a = n(j.tag_name), b = n(app.getVersion());
+    if ((a[0] - b[0] || a[1] - b[1] || a[2] - b[2]) > 0) win.webContents.send('update', { tag: j.tag_name, url: j.html_url });
+  } catch {}
+}
+const DISCORD_ID = '1575268156908503040'; // Application ID criado em discord.com/developers (veja DOCUMENTACAO.md)
+let rpc = null, rpcReady = false, rpcLast = null;
+function rpcSend() {
+  if (!rpcReady || !rpc) return;
+  const a = rpcLast;
+  if (!a) return rpc.clearActivity().catch(() => {});
+  const act = { details: String(a.ti).slice(0, 120), state: a.p ? 'Pausado' : String(a.ar || 'AeroTube').slice(0, 120), instance: false };
+  if (!a.p) { act.startTimestamp = Math.round(Date.now() - a.t * 1000); if (a.d > 0) act.endTimestamp = Math.round(Date.now() + (a.d - a.t) * 1000); }
+  rpc.setActivity(act).catch(() => {});
+}
+ipcMain.on('rpc', (_, a) => {
+  rpcLast = a;
+  if (!DISCORD_ID) return;
+  try {
+    if (!rpc && a) {
+      const R = require('discord-rpc');
+      rpc = new R.Client({ transport: 'ipc' });
+      rpc.on('ready', () => { rpcReady = true; rpcSend(); });
+      rpc.login({ clientId: DISCORD_ID }).catch(() => { rpc = null; rpcReady = false; });
+    } else rpcSend();
+  } catch { rpc = null; }
+});
+app.on('will-quit', () => { try { if (rpc) rpc.destroy(); } catch {} });
+let base = 1, fade = false, ghost = false;
 ipcMain.on('op', (_, v) => { base = v; win.setOpacity(v); });
 ipcMain.on('fade', (_, f) => { fade = f; if (!f) win.setOpacity(base); });
 ipcMain.on('startup', (_, v) => app.setLoginItemSettings({ openAtLogin: v }));

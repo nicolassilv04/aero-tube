@@ -1,6 +1,6 @@
 {
   "name": "aero-tube-widget",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Widget de controle para YouTube Music e YouTube",
   "main": "main.js",
   "scripts": {
@@ -26,5 +26,8 @@
     ]
   },
   "author": "Nicolas",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "discord-rpc": "^4.0.1"
+  }
 }

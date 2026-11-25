@@ -10,14 +10,14 @@ $null=[Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Wi
 $null=[Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]
 $null=[Windows.Storage.Streams.IRandomAccessStreamWithContentType,Windows.Storage.Streams,ContentType=WindowsRuntime]
 $mgr=Aw ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
-$last=''
+$last='';$pat='Spotify'
 while($true){
  try{
-  $ss=$mgr.GetSessions()|Where-Object{$_.SourceAppUserModelId -match 'Spotify'}|Select-Object -First 1
+  $c='';if(Test-Path $cmd){$c=(Get-Content $cmd -Raw).Trim();Remove-Item $cmd -Force;if($c -like 'pat *'){$pat=$c.Substring(4);$c=''}}
+  $ss=$mgr.GetSessions()|Where-Object{$_.SourceAppUserModelId -match $pat}|Select-Object -First 1
   if(-not $ss){Emit '{"none":1}'}
   else{
-   if(Test-Path $cmd){
-    $c=(Get-Content $cmd -Raw).Trim();Remove-Item $cmd -Force
+   if($c){
     if($c -eq 'pp'){$null=Aw ($ss.TryTogglePlayPauseAsync()) ([bool])}
     elseif($c -eq 'next'){$null=Aw ($ss.TrySkipNextAsync()) ([bool])}
     elseif($c -eq 'prev'){$null=Aw ($ss.TrySkipPreviousAsync()) ([bool])}

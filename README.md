@@ -24,14 +24,17 @@ Visual Frutiger Aero, cyberpunk e mais 10 temas.
 
 ## Recursos
 
-- **YouTube Music, YouTube e Spotify** no mesmo widget. Escolha qual player de música usar, ou use os dois. O YouTube fica sempre ativo.
+- **YouTube Music, YouTube, rádios online e apps do Windows** (Spotify, Deezer, Apple Music ou qualquer player) no mesmo widget. YouTube e Rádio ficam sempre ativos; o resto você escolhe.
 - **Modos para cada gosto:** só a barra de reprodução, letra sincronizada, vídeo, ou só áudio.
 - **Tamanhos S, M e L**, além de redimensionamento livre arrastando as bordas.
-- **12 temas** e opção de usar a cor da capa como destaque.
+- **12 temas** mais um **editor de tema** (3 cores, com exportar e importar para dividir com amigos) e opção de usar a cor da capa como destaque.
 - **Pular segundos:** você define quantos, de 1 a 600.
 - **Velocidade, volume, repetir faixa e timer para dormir.**
 - **Extras:** notificação ao trocar de música, esmaecer quando o mouse sai, iniciar com o Windows e janela sempre no topo.
-- **Atalhos globais** que funcionam com qualquer app em foco.
+- **Rádios online** com busca, favoritos e a música atual quando a rádio informa.
+- **Visualizador de áudio** real, que reage ao som do computador, e **Discord** mostrando o que você está ouvindo.
+- **Atalhos globais**, incluindo esconder o widget e deixar o clique atravessar a janela (bom para jogos).
+- **Aviso de atualização** quando sai uma versão nova no GitHub.
 - **Abrir no navegador** no ponto exato em que você está.
 - **Salva tudo:** tema, posição, opacidade e preferências.
 
@@ -62,7 +65,8 @@ Não precisa instalar Node, Git ou qualquer outra coisa. Guia completo: [DOCUMEN
 |---|---|---|
 | YouTube Music | `BAR`, `LYR`, `VID` | Abra o `VID` para buscar músicas e fazer login |
 | YouTube | `ÁUDIO`, `VÍDEO` | O áudio continua tocando com o vídeo escondido |
-| Spotify | `BAR`, `LYR` | Sem login, lido pelo controle de mídia do Windows |
+| Spotify e outros apps | `BAR`, `LYR` | Sem login, lido pelo controle de mídia do Windows |
+| Rádio | `BAR`, `LISTA` | Busca no Radio Browser, favoritos e links |
 
 ## Temas
 
@@ -80,7 +84,20 @@ O Spotify é controlado pelo **controle de mídia do Windows**. Por isso:
 - funciona para qualquer pessoa que tenha o app do Spotify instalado
 - você tem play/pause, anterior/próxima, barra de progresso, pular segundos e letra
 
-Deixe o **app do Spotify para Windows** aberto e tocando. A versão do navegador não é detectada. Volume, velocidade e repetir faixa valem só para YouTube e YouTube Music.
+Escolha o app no **⚙** (Spotify, Deezer, Apple Music ou **Qualquer**, que também pega players no navegador). Deixe o app aberto e tocando; se não for detectado, o botão `↗` tenta abri-lo. Volume, velocidade e repetir faixa valem só para YouTube e YouTube Music.
+
+<br clear="right">
+
+## Rádios
+
+<img src="docs/img/radio.png" alt="Aba de rádios" width="380" align="right">
+
+A aba **RÁDIO** usa o [Radio Browser](https://www.radio-browser.info), um catálogo comunitário e gratuito de rádios online.
+
+- busca por nome, país ou gênero, com atalhos para Brasil, Games, Rock, Lo-fi e EDM
+- favoritos com ★; para guardar um link de playlist, cole o link na busca e aperte Enter
+- mostra a música atual quando a rádio envia essa informação
+- algumas rádios podem estar fora do ar ou bloqueadas por região
 
 <br clear="right">
 
@@ -91,6 +108,8 @@ Deixe o **app do Spotify para Windows** aberto e tocando. A versão do navegador
 | `Ctrl` + `Alt` + `Espaço` | Play / pause |
 | `Ctrl` + `Alt` + `←` / `→` | Anterior / próxima |
 | `Ctrl` + `Alt` + `↑` / `↓` | Pular para frente / para trás |
+| `Ctrl` + `Alt` + `H` | Esconder / mostrar o widget |
+| `Ctrl` + `Alt` + `L` | Clique atravessa a janela (aperte de novo para voltar) |
 
 ## Rodar pelo código
 
